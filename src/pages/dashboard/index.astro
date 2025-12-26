@@ -1,0 +1,229 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import GateControl from '../../components/islands/GateControl';
+import { supabase } from '../../lib/supabase';
+
+// Sprawdź autoryzację
+const { data: { session } } = await supabase.auth.getSession();
+
+if (!session) {
+    return Astro.redirect('/login');
+}
+
+// Pobierz dane użytkownika i jego subskrypcje
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', session.user.id)
+    .single();
+
+const { data: subscriptions } = await supabase
+    .from('subscriptions')
+    .select(`
+        *,
+        units (
+            id,
+            name,
+            size,
+            gate_code
+        )
+    `)
+    .eq('user_id', session.user.id)
+    .eq('status', 'active');
+
+const { data: accessLogs } = await supabase
+    .from('access_logs')
+    .select('*')
+    .eq('user_id', session.user.id)
+    .order('timestamp', { ascending: false })
+    .limit(10);
+
+const hasActiveSubscription = subscriptions && subscriptions.length > 0;
+---
+
+<AppLayout title="Panel Klienta - Self Storage 24/7">
+    <div class="min-h-screen bg-slate-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-slate-200">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-800">Panel Klienta</h1>
+                        <p class="text-slate-600">Witaj, {profile?.full_name || session.user.email}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <a href="/" class="text-slate-600 hover:text-slate-800 transition-colors">
+                            ← Powrót na stronę główną
+                        </a>
+                        <form action="/api/auth/signout" method="post">
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Wyloguj
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            {hasActiveSubscription ? (
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Subscriptions -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                            <h2 class="text-xl font-bold text-slate-800 mb-4">Twoje Kontenery</h2>
+                            <div class="space-y-4">
+                                {subscriptions.map((sub) => (
+                                    <div class="border border-slate-200 rounded-lg p-4">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <div>
+                                                <h3 class="text-lg font-semibold text-slate-800">{sub.units.name}</h3>
+                                                <p class="text-slate-600">{sub.units.size}</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-sm text-slate-600">Status</p>
+                                                <span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                                                    Aktywny
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <p class="text-sm text-slate-600">Data wygaśnięcia</p>
+                                                <p class="font-semibold text-slate-800">
+                                                    {new Date(sub.current_period_end).toLocaleDateString('pl-PL')}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm text-slate-600">Kod dostępu</p>
+                                                <p class="font-mono font-bold text-lg text-slate-800 tracking-wider">
+                                                    {sub.units.gate_code}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Gate Control Component -->
+                                        <GateControl 
+                                            client:load
+                                            userId={session.user.id}
+                                            unitId={sub.units.id}
+                                            gateCode={sub.units.gate_code}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <!-- Access Logs -->
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                            <h2 class="text-xl font-bold text-slate-800 mb-4">Historia Dostępu</h2>
+                            {accessLogs && accessLogs.length > 0 ? (
+                                <div class="space-y-2">
+                                    {accessLogs.map((log) => (
+                                        <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0">
+                                            <div class="flex items-center gap-3">
+                                                <div class={`w-2 h-2 rounded-full ${
+                                                    log.status === 'SUCCESS' ? 'bg-green-500' : 'bg-red-500'
+                                                }`}></div>
+                                                <span class="text-sm text-slate-600">
+                                                    {log.action === 'OPEN_GATE' ? 'Otwarcie bramy' : log.action}
+                                                </span>
+                                            </div>
+                                            <span class="text-sm text-slate-500">
+                                                {new Date(log.timestamp).toLocaleString('pl-PL')}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p class="text-slate-500 text-center py-4">Brak historii dostępu</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <!-- Sidebar -->
+                    <div class="space-y-6">
+                        <!-- User Info -->
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Dane Kontaktowe</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-sm text-slate-600">Email</p>
+                                    <p class="font-medium text-slate-800">{session.user.email}</p>
+                                </div>
+                                {profile?.phone_number && (
+                                    <div>
+                                        <p class="text-sm text-slate-600">Telefon</p>
+                                        <p class="font-medium text-slate-800">{profile.phone_number}</p>
+                                    </div>
+                                )}
+                                {profile?.full_name && (
+                                    <div>
+                                        <p class="text-sm text-slate-600">Nazwa</p>
+                                        <p class="font-medium text-slate-800">{profile.full_name}</p>
+                                    </div>
+                                )}
+                                {profile?.nip && (
+                                    <div>
+                                        <p class="text-sm text-slate-600">NIP</p>
+                                        <p class="font-medium text-slate-800">{profile.nip}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Szybkie Akcje</h3>
+                            <div class="space-y-3">
+                                <button class="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="font-medium text-slate-800">Pobierz faktury</p>
+                                            <p class="text-sm text-slate-600">Historia płatności</p>
+                                        </div>
+                                    </div>
+                                </button>
+                                
+                                <button class="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="font-medium text-slate-800">Ustawienia</p>
+                                            <p class="text-sm text-slate-600">Zmień dane kontaktowe</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <!-- No Subscription -->
+                <div class="max-w-2xl mx-auto">
+                    <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
+                        <div class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-4">Nie masz jeszcze wynajętego kontenera</h2>
+                        <p class="text-slate-600 mb-6">
+                            Przejdź na stronę główną i wybierz dostępny kontener, aby rozpocząć wynajem.
+                        </p>
+                        <a href="/" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                            Znajdź kontener
+                        </a>
+                    </div>
+                </div>
+            )}
+        </div>
+    </div>
+</AppLayout>

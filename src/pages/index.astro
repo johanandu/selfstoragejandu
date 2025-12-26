@@ -1,0 +1,223 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+import PaymentButton from '../components/islands/PaymentButton';
+import { supabase } from '../lib/supabase';
+
+// Pobierz dostępne kontenery z bazy
+const { data: availableUnits, error } = await supabase
+  .from('units')
+  .select('*')
+  .eq('status', 'available')
+  .order('price_monthly', { ascending: true });
+
+if (error) {
+  console.error('Error fetching units:', error);
+}
+---
+
+<AppLayout title="Self Storage 24/7 - Wynajmij magazyn online">
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 text-white min-h-screen flex items-center">
+        <div class="container mx-auto px-4 py-20">
+            <div class="max-w-4xl mx-auto text-center">
+                <div class="animate-fade-in">
+                    <h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6">
+                        Self Storage<br>
+                        <span class="gradient-text">24/7</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl text-slate-300 mb-8 leading-relaxed">
+                        Wynajmij magazyn w <strong>3 minuty</strong>, bez umów i obsługi. 
+                        <br>Cały proces online - od płatności po otwarcie bramy telefonem.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                        <a href="#units" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors duration-200">
+                            Zobacz dostępne kontenery
+                        </a>
+                        <a href="/dashboard" class="border-2 border-teal-600 text-teal-600 hover:bg-teal-600 hover:text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors duration-200">
+                            Panel klienta
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Features -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                        <div class="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">24/7 Dostęp</h3>
+                        <p class="text-slate-300">Otwieraj bramę telefonem o każdej porze dnia i nocy</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                        <div class="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Bezpieczne</h3>
+                        <p class="text-slate-300">Monitoring, automatyczne zamki i kontrola dostępu</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                        <div class="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Automatyczne</h3>
+                        <p class="text-slate-300">Zero papierologii - wszystko przez internet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Available Units Section -->
+    <section id="units" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">
+                    Dostępne <span class="gradient-text">Kontenery</span>
+                </h2>
+                <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+                    Wybierz odpowiedni kontener i zacznij korzystać natychmiast po płatności
+                </p>
+            </div>
+
+            {availableUnits && availableUnits.length > 0 ? (
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {availableUnits.map((unit) => (
+                        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                            <div class="bg-slate-800 text-white p-6">
+                                <h3 class="text-2xl font-bold mb-2">{unit.name}</h3>
+                                <p class="text-slate-300">{unit.size} powierzchni</p>
+                            </div>
+                            <div class="p-6">
+                                <div class="text-center mb-6">
+                                    <div class="text-4xl font-bold text-slate-800 mb-2">
+                                        {(unit.price_monthly / 100).toFixed(2)} zł
+                                    </div>
+                                    <p class="text-slate-600">za miesiąc</p>
+                                </div>
+                                
+                                <div class="space-y-3 mb-6">
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span class="text-slate-700">Dostęp 24/7</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span class="text-slate-700">Monitoring CCTV</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span class="text-slate-700">Otwieranie telefonem</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span class="text-slate-700">Faktura VAT automatycznie</span>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Button Component -->
+                                <PaymentButton 
+                                    client:load
+                                    unitId={unit.id}
+                                    unitName={unit.name}
+                                    price={unit.price_monthly / 100}
+                                    userId={null} // Will be set after login
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div class="text-center py-16">
+                    <div class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Brak dostępnych kontenerów</h3>
+                    <p class="text-slate-600">Sprawdź ponownie później lub zapisz się na listę oczekujących</p>
+                </div>
+            )}
+        </div>
+    </section>
+
+    <!-- How it works Section -->
+    <section class="py-20 bg-slate-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">
+                    Jak to <span class="gradient-text">działa</span>?
+                </h2>
+                <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+                    4 proste kroki do wynajmu magazynu bez wychodzenia z domu
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-teal-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">1</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Wybierz kontener</h3>
+                    <p class="text-slate-600">Znajdź odpowiednią powierzchnię i zarezerwuj online</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-teal-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">2</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Zapłać online</h3>
+                    <p class="text-slate-600">Bezpieczna płatność kartą lub BLIK przez Stripe</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-teal-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">3</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Otrzymaj dostęp</h3>
+                    <p class="text-slate-600">SMS i email z linkiem do panelu klienta</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-teal-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">4</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Korzystaj</h3>
+                    <p class="text-slate-600">Otwieraj bramę telefonem 24/7 i przechowuj rzeczy</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-slate-800 text-white">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                Gotowy na <span class="gradient-text">wynajem</span>?
+            </h2>
+            <p class="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
+                Dołącz do setek zadowolonych klientów i ciesz się dostępem do magazynu, kiedy tylko potrzebujesz
+            </p>
+            <a href="#units" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors duration-200 inline-block">
+                Znajdź kontener dla siebie
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h3 class="text-2xl font-bold mb-4">Self Storage 24/7</h3>
+                <p class="text-slate-400 mb-6">Automatyczny system wynajmu magazynów</p>
+                <div class="border-t border-slate-700 pt-6">
+                    <p class="text-slate-500 text-sm">
+                        © 2025 Self Storage System. Wszystkie prawa zastrzeżone.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</AppLayout>
